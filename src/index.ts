@@ -1,24 +1,42 @@
+import "dotenv/config"
 import "reflect-metadata"
 
+import ddTracer from "dd-trace"
 import { GraphQLServer, Options } from "graphql-yoga"
 import { parse } from "mongodb-uri"
 import * as morgan from "morgan"
 import { Connection, createConnection } from "typeorm"
+
 import { createSchema } from "./createSchema"
 import { entities } from "./Entities"
-import { setupDataDog } from "./lib/setup"
 
 const { MONGOHQ_URL, NODE_ENV, PORT } = process.env
 
-// tslint:disable:no-console
-
 async function bootstrap() {
-  const schema = await createSchema()
-  const server = new GraphQLServer({ schema })
-  const app = server.express
-  setupDataDog()
-
   try {
+    const schema = await createSchema()
+    const server = new GraphQLServer({ schema })
+    const app = server.express
+
+    // Setup DataDog
+    if (process.env.DD_APM_ENABLED) {
+      ddTracer.init({
+        hostname: process.env.DD_TRACE_AGENT_HOSTNAME,
+        service: "kaws",
+        plugins: false,
+      })
+      ddTracer.use("express", {
+        service: "kaws",
+        headers: ["User-Agent"],
+      })
+      ddTracer.use("graphql", {
+        service: "kaws.graphql",
+      })
+      ddTracer.use("http", {
+        service: `kaws.http-client`,
+      })
+    }
+
     const { username, password, database, hosts, options } = parse(MONGOHQ_URL!)
 
     const connection: Connection = await createConnection({
@@ -33,7 +51,11 @@ async function bootstrap() {
       entities,
     })
     if (connection.isConnected) {
-      console.log("Successfully connected to MongoDB database:", database)
+      // tslint:disable-next-line
+      console.log(
+        "[kaws] Successfully connected to MongoDB database:",
+        database
+      )
     }
 
     const serverOptions: Options = {
@@ -43,17 +65,18 @@ async function bootstrap() {
       debug: NODE_ENV === "development",
     }
 
-    app.get("/health", (req, res) => {
-      return res.status(200).end()
-    })
+    app.get("/health", (req, res) => res.status(200).end())
     app.use(morgan("combined"))
 
     server.start(serverOptions, ({ port, playground }) => {
       // tslint:disable-next-line
-      console.log(`Server is running, GraphQL Playground available at http://localhost:${port}${playground}`)
+      console.log(
+        `[kaws] Server is running, GraphQL Playground available at http://localhost:${port}${playground}`
+      )
     })
-  } catch (e) {
-    console.error("Failed to connect to MongoDB ", e)
+  } catch (error) {
+    // tslint:disable-next-line
+    console.error("[kaws] Failed to connect to MongoDB ", error)
   }
 }
 

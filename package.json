@@ -2,15 +2,34 @@
   "name": "kaws",
   "version": "0.0.1",
   "description": "",
-  "main": "build/index.js",
+  "main": "dist/index.js",
   "author": "Luc Succes <l2succes@gmail.com> & Art.sy Inc",
   "license": "MIT",
+  "scripts": {
+    "bootstrap-data": "node src/scripts/bootstrapData.ts --extensions '.ts'",
+    "compile": "babel src --out-dir dist -s --source-map --extensions '.ts,.tsx' --ignore src/**/__tests__",
+    "dump-schema": "node src/scripts/dumpSchema.ts --extensions '.ts'",
+    "lint": "tslint 'src/**/*.{ts,tsx}'",
+    "release": "release-it",
+    "start": "node -r dotenv/config dist/index.js",
+    "test": "jest",
+    "type-check": "tsc --noEmit",
+    "watch": "concurrently --raw --kill-others 'yarn compile -w' 'yarn type-check -w'"
+  },
   "devDependencies": {
+    "@babel/cli": "^7.1.2",
+    "@babel/core": "^7.1.2",
+    "@babel/node": "^7.0.0",
+    "@babel/plugin-proposal-class-properties": "^7.1.0",
+    "@babel/plugin-proposal-decorators": "^7.1.2",
+    "@babel/preset-env": "^7.1.0",
+    "@babel/preset-typescript": "^7.1.0",
     "@types/jest": "^23.3.2",
     "@types/lodash": "^4.14.116",
     "@types/mongodb-uri": "^0.9.0",
     "@types/morgan": "^1.7.35",
     "@types/node": "^10.11.0",
+    "concurrently": "^4.0.1",
     "danger": "^4.0.2",
     "dotenv": "^6.1.0",
     "husky": "^1.1.2",
@@ -21,18 +40,8 @@
     "ts-jest": "^23.10.1",
     "ts-node": "^7.0.1",
     "tslint": "^5.11.0",
+    "tslint-config-prettier": "^1.15.0",
     "typescript": "^3.0.3"
-  },
-  "scripts": {
-    "type-check": "tsc --noEmit",
-    "build": "tsc",
-    "lint": "tslint 'src/**/*.{ts,tsx}'",
-    "release": "release-it",
-    "start": "node -r dotenv/config build/index.js",
-    "bootstrap-data": "node -r dotenv/config build/scripts/bootstrapData.js",
-    "watch": "tsc --watch",
-    "dump-schema": "node build/scripts/dumpSchema.js",
-    "test": "jest"
   },
   "jest": {
     "preset": "ts-jest",
@@ -41,7 +50,6 @@
     ]
   },
   "prettier": {
-    "printWidth": 115,
     "semi": false,
     "singleQuote": false,
     "trailingComma": "es5",
@@ -51,7 +59,7 @@
   "husky": {
     "hooks": {
       "pre-commit": "lint-staged; yarn dump-schema _schema.graphql",
-      "pre-push": "yarn build"
+      "pre-push": "yarn compile"
     }
   },
   "lint-staged": {

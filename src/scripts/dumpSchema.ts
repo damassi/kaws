@@ -1,5 +1,6 @@
+import "dotenv/config"
+
 import { writeFileSync } from "fs"
-import { graphql, introspectionQuery } from "graphql"
 import { printSchema } from "graphql/utilities"
 import { format } from "prettier"
 import { createSchema } from "../createSchema"
