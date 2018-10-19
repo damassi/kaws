@@ -1,5 +1,7 @@
+// tslint:disable:no-console
+
 import "dotenv/config"
-import "reflect-metadata"
+require("reflect-metadata")
 
 import ddTracer from "dd-trace"
 import { GraphQLServer, Options } from "graphql-yoga"
@@ -10,18 +12,62 @@ import { Connection, createConnection } from "typeorm"
 import { createSchema } from "./createSchema"
 import { entities } from "./Entities"
 
-const { MONGOHQ_URL, NODE_ENV, PORT } = process.env
+const {
+  DD_APM_ENABLED,
+  DD_TRACE_AGENT_HOSTNAME,
+  MONGOHQ_URL,
+  NODE_ENV,
+  PORT,
+} = process.env
 
 async function bootstrap() {
+  // Setup Database
+  try {
+    const { username, password, database, hosts, options } = parse(MONGOHQ_URL!)
+    const connection: Connection = await createConnection({
+      type: "mongodb",
+      username,
+      password,
+      database,
+      ...options,
+      host: hosts.map(a => a.host).join(","),
+      port: 27017,
+      ssl: true,
+      entities,
+    })
+
+    if (connection.isConnected) {
+      console.log(
+        "[kaws] Successfully connected to MongoDB database:",
+        database
+      )
+    }
+  } catch (error) {
+    console.error("[kaws] Error to connecting to MongoDB:", error)
+  }
+
+  // Setup server
   try {
     const schema = await createSchema()
     const server = new GraphQLServer({ schema })
     const app = server.express
+    const serverOptions: Options = {
+      port: PORT,
+      endpoint: "/graphql",
+      playground: "/playground",
+      debug: NODE_ENV === "development",
+    }
+
+    // Setup middleware
+    app.use(morgan("combined"))
+
+    // Setup endpoints
+    app.get("/health", (req, res) => res.status(200).end())
 
     // Setup DataDog
-    if (process.env.DD_APM_ENABLED) {
+    if (DD_APM_ENABLED) {
       ddTracer.init({
-        hostname: process.env.DD_TRACE_AGENT_HOSTNAME,
+        hostname: DD_TRACE_AGENT_HOSTNAME,
         service: "kaws",
         plugins: false,
       })
@@ -37,46 +83,14 @@ async function bootstrap() {
       })
     }
 
-    const { username, password, database, hosts, options } = parse(MONGOHQ_URL!)
-
-    const connection: Connection = await createConnection({
-      type: "mongodb",
-      username,
-      password,
-      database,
-      ...options,
-      host: hosts.map(a => a.host).join(","),
-      port: 27017,
-      ssl: true,
-      entities,
-    })
-    if (connection.isConnected) {
-      // tslint:disable-next-line
-      console.log(
-        "[kaws] Successfully connected to MongoDB database:",
-        database
-      )
-    }
-
-    const serverOptions: Options = {
-      port: PORT,
-      endpoint: "/graphql",
-      playground: "/playground",
-      debug: NODE_ENV === "development",
-    }
-
-    app.get("/health", (req, res) => res.status(200).end())
-    app.use(morgan("combined"))
-
+    // Start the server
     server.start(serverOptions, ({ port, playground }) => {
-      // tslint:disable-next-line
       console.log(
         `[kaws] Server is running, GraphQL Playground available at http://localhost:${port}${playground}`
       )
     })
   } catch (error) {
-    // tslint:disable-next-line
-    console.error("[kaws] Failed to connect to MongoDB ", error)
+    console.log("[kaws] Error booting server:", error)
   }
 }
 

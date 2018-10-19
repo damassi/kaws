@@ -1,11 +1,12 @@
+import "@abraham/reflection"
 import "dotenv/config"
-import "reflect-metadata"
+// import "reflect-metadata"
 
 import { parse } from "mongodb-uri"
 import { createConnection, getMongoRepository } from "typeorm"
-import { Collection, entities } from "../Entities"
+import { Collection, entities } from "../src/Entities"
 
-const data = require("../../fixtures/collections.json")
+const data = require("../fixtures/collections.json")
 const { MONGOHQ_URL } = process.env
 
 async function bootstrap() {

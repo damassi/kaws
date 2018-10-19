@@ -6,9 +6,9 @@
   "author": "Luc Succes <l2succes@gmail.com> & Art.sy Inc",
   "license": "MIT",
   "scripts": {
-    "bootstrap-data": "node src/scripts/bootstrapData.ts --extensions '.ts'",
-    "compile": "babel src --out-dir dist -s --source-map --extensions '.ts,.tsx' --ignore src/**/__tests__",
-    "dump-schema": "node src/scripts/dumpSchema.ts --extensions '.ts'",
+    "bootstrap-data": "babel-node scripts/bootstrapData.ts --extensions '.ts'",
+    "compile": "babel src --out-dir dist --source-maps --extensions '.ts,.tsx' --ignore src/**/__tests__",
+    "dump-schema": "babel-node scripts/dumpSchema.ts --extensions '.ts'",
     "lint": "tslint 'src/**/*.{ts,tsx}'",
     "release": "release-it",
     "start": "node -r dotenv/config dist/index.js",
@@ -70,6 +70,7 @@
     ]
   },
   "dependencies": {
+    "@abraham/reflection": "^0.4.2",
     "class-transformer": "^0.1.9",
     "dd-trace": "^0.6.0",
     "graphql-yoga": "^1.16.2",
